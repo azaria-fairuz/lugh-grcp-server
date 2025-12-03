@@ -16,7 +16,6 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY --from=builder /install/packages /usr/local
 COPY . .
-COPY ./.env.example ./.env
 
 EXPOSE 8500
 
