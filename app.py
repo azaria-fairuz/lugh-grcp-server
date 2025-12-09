@@ -45,6 +45,8 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
             return frame_pb2.Empty()
 
         msg = json.dumps({
+            "width" : request.width,
+            "height" : request.height,
             "camera_id": request.camera_id,
             "data": base64.b64encode(request.data).decode('utf-8')
         })
@@ -61,7 +63,7 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
         return frame_pb2.Empty()
 
 async def serve():
-    ws_uri = "ws://localhost:8503/frames"
+    ws_uri = "ws://localhost:8502/frames?type=sender"
 
     server = grpc.aio.server(
         options=[
