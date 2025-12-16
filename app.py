@@ -6,6 +6,14 @@ import websockets
 import frame_pb2
 import frame_pb2_grpc
 
+import time
+import socket
+import random
+from datetime import datetime
+
+WITS_IP   = "127.0.0.1"
+WITS_PORT = 8504
+
 class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
     def __init__(self, ws_uri):
         self.ws_uri = ws_uri
@@ -62,9 +70,32 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
 
         return frame_pb2.Empty()
 
+    def send_wits_data(self):
+        c1 = random.randint(0, 10)
+        c2 = random.randint(0, 80)
+        c3 = random.randint(0, 200)
+        c4 = random.randint(0, 400)
+
+        now  = datetime.utcnow()
+        date = now.strftime("%y%m%d")
+        time = now.strftime("%H%M%S")
+
+        wits_message = (
+            "&&\r\n"
+            f"0101 {date}\r\n"
+            f"0102 {time}\r\n"
+            f"0101 {c1}\r\n"
+            f"0102 {c3}\r\n"
+            f"0201 {c2}\r\n"
+            f"0202 {c4}\r\n"
+            "!!\r\n"
+        )
+
+        self.wits_sock.sendall(wits_message.encode("ascii"))
+        print(f"[WITS0] {date}-{time} Data sent after frame")
+
 async def serve():
     ws_uri = "ws://localhost:8502/frames?type=sender"
-
     server = grpc.aio.server(
         options=[
             ('grpc.max_send_message_length', 50 * 1024 * 1024),
@@ -79,7 +110,11 @@ async def serve():
     server.add_insecure_port('[::]:8501')
     await server.start()
 
-    print("[START] Listening on port 8501")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((WITS_IP, WITS_PORT))
+    print("[WITS0] sending data to WITS-0 port 8504")
+
+    print("[GRPC] Listening on port 8501")
     await server.wait_for_termination()
 
 if __name__ == "__main__":
