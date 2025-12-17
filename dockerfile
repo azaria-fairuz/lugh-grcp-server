@@ -24,4 +24,4 @@ COPY frame_pb2_grpc.py .
 EXPOSE 8501
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "server.py"]
+CMD ["python", "app.py"]
