@@ -11,7 +11,7 @@ import socket
 import random
 from datetime import datetime
 
-WITS_IP   = "127.0.0.1"
+WITS_IP   = "host.docker.internal"
 WITS_PORT = 8504
 GRPC_PORT = 8501
 
