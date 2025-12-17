@@ -17,7 +17,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY --from=builder /install /usr/local
 
-COPY server.py .
+COPY app.py .
 COPY frame_pb2.py .
 COPY frame_pb2_grpc.py .
 
