@@ -22,6 +22,9 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
         self.connected = False
         self.reconnecting = False
 
+        self.wits_writer = None
+        self.wits_connecting = False
+
     async def connect_ws(self):
         if self.connected and self.websocket is not None:
             try:
@@ -71,32 +74,70 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
 
         return frame_pb2.Empty()
 
-    def send_wits_data(self):
-        c1 = random.randint(0, 10)
-        c2 = random.randint(0, 80)
-        c3 = random.randint(0, 200)
-        c4 = random.randint(0, 400)
+    async def connect_wits0(self):
+        while True:
+            if self.wits_writer is not None:
+                await asyncio.sleep(1)
+                continue
 
-        now  = datetime.utcnow()
-        date = now.strftime("%y%m%d")
-        time = now.strftime("%H%M%S")
+            if self.wits_connecting:
+                await asyncio.sleep(1)
+                continue
 
-        wits_message = (
-            "&&\r\n"
-            f"0101 {date}\r\n"
-            f"0102 {time}\r\n"
-            f"0101 {c1}\r\n"
-            f"0102 {c3}\r\n"
-            f"0201 {c2}\r\n"
-            f"0202 {c4}\r\n"
-            "!!\r\n"
-        )
+            self.wits_connecting = True
+            try:
+                print(f"[WITS0] Connecting to {WITS_IP}:{WITS_PORT}...")
+                _, writer = await asyncio.open_connection(WITS_IP, WITS_PORT)
+                self.wits_writer = writer
+                print(f"[WITS0] Connected")
+            except Exception as e:
+                print(f"[WITS0] Connection failed: {e}")
+                await asyncio.sleep(3)
+            finally:
+                self.wits_connecting = False
 
-        self.wits_sock.sendall(wits_message.encode("ascii"))
-        print(f"[WITS0] {date}-{time} Data sent after frame")
+    async def send_wits_data(self):
+        if not self.wits_writer:
+            return
+
+        try:
+            c1 = random.randint(0, 10)
+            c2 = random.randint(0, 80)
+            c3 = random.randint(0, 200)
+            c4 = random.randint(0, 400)
+
+            now = datetime.utcnow()
+            date = now.strftime("%y%m%d")
+            time_ = now.strftime("%H%M%S")
+
+            wits_message = (
+                "&&\r\n"
+                f"0101 {date}\r\n"
+                f"0102 {time_}\r\n"
+                f"0101 {c1}\r\n"
+                f"0102 {c3}\r\n"
+                f"0201 {c2}\r\n"
+                f"0202 {c4}\r\n"
+                "!!\r\n"
+            )
+
+            self.wits_writer.write(wits_message.encode("ascii"))
+            await self.wits_writer.drain()
+
+            print(f"[WITS0] {date}-{time_} Data sent")
+
+        except Exception as e:
+            print(f"[WITS0] Send failed: {e}")
+            try:
+                self.wits_writer.close()
+                await self.wits_writer.wait_closed()
+            except:
+                pass
+            self.wits_writer = None
 
 async def serve():
     ws_uri = f"ws://localhost:{GRPC_PORT}/frames?type=sender"
+
     server = grpc.aio.server(
         options=[
             ('grpc.max_send_message_length', 50 * 1024 * 1024),
@@ -104,18 +145,15 @@ async def serve():
         ]
     )
 
-    frame_pb2_grpc.add_FrameServiceServicer_to_server(
-        FrameServiceServicer(ws_uri),
-        server
-    )
+    servicer = FrameServiceServicer(ws_uri)
+    frame_pb2_grpc.add_FrameServiceServicer_to_server(servicer, server)
+
     server.add_insecure_port(f'[::]:{GRPC_PORT}')
     await server.start()
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((WITS_IP, WITS_PORT))
-    print(f"[WITS0] sending data to WITS-0 port {WITS_PORT}")
-
     print(f"[GRPC] Listening on port {GRPC_PORT}")
+
+    asyncio.create_task(servicer.connect_wits0())
     await server.wait_for_termination()
 
 if __name__ == "__main__":
