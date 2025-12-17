@@ -13,6 +13,7 @@ from datetime import datetime
 
 WITS_IP   = "127.0.0.1"
 WITS_PORT = 8504
+GRPC_PORT = 8501
 
 class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
     def __init__(self, ws_uri):
@@ -95,7 +96,7 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
         print(f"[WITS0] {date}-{time} Data sent after frame")
 
 async def serve():
-    ws_uri = "ws://localhost:8502/frames?type=sender"
+    ws_uri = f"ws://localhost:{GRPC_PORT}/frames?type=sender"
     server = grpc.aio.server(
         options=[
             ('grpc.max_send_message_length', 50 * 1024 * 1024),
@@ -107,14 +108,14 @@ async def serve():
         FrameServiceServicer(ws_uri),
         server
     )
-    server.add_insecure_port('[::]:8501')
+    server.add_insecure_port(f'[::]:{GRPC_PORT}')
     await server.start()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((WITS_IP, WITS_PORT))
-    print("[WITS0] sending data to WITS-0 port 8504")
+    print(f"[WITS0] sending data to WITS-0 port {WITS_PORT}")
 
-    print("[GRPC] Listening on port 8501")
+    print(f"[GRPC] Listening on port {GRPC_PORT}")
     await server.wait_for_termination()
 
 if __name__ == "__main__":
