@@ -17,6 +17,6 @@ WORKDIR /app
 COPY --from=builder /install/packages /usr/local
 COPY . .
 
-EXPOSE 8500
+EXPOSE 8501
 
-CMD ["fastapi", "run", "app.py", "--port=8500"]
+CMD ["fastapi", "run", "app.py", "--port=8501"]
