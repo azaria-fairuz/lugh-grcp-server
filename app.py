@@ -14,6 +14,7 @@ from datetime import datetime
 WITS_IP   = "host.docker.internal"
 WITS_PORT = 8504
 GRPC_PORT = 8501
+WEBSOCKER_PORT = 8502
 
 class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
     def __init__(self, ws_uri):
@@ -65,6 +66,7 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
 
         try:
             await self.websocket.send(msg)
+            await self.send_wits_data()
 
         except Exception as e:
             print(f"[WS] Send failed: {e}")
@@ -114,8 +116,8 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
                 "&&\r\n"
                 f"0101 {date}\r\n"
                 f"0102 {time_}\r\n"
-                f"0101 {c1}\r\n"
-                f"0102 {c3}\r\n"
+                f"0103 {c1}\r\n"
+                f"0104 {c3}\r\n"
                 f"0201 {c2}\r\n"
                 f"0202 {c4}\r\n"
                 "!!\r\n"
@@ -136,7 +138,7 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
             self.wits_writer = None
 
 async def serve():
-    ws_uri = f"ws://localhost:{GRPC_PORT}/frames?type=sender"
+    ws_uri = f"ws://localhost:{WEBSOCKER_PORT}/frames?type=sender"
 
     server = grpc.aio.server(
         options=[
