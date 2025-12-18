@@ -25,6 +25,7 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
 
         self.wits_writer = None
         self.wits_connecting = False
+        self.last_wits_second = None
 
     async def connect_ws(self):
         if self.connected and self.websocket is not None:
@@ -102,13 +103,20 @@ class FrameServiceServicer(frame_pb2_grpc.FrameServiceServicer):
         if not self.wits_writer:
             return
 
+        now = datetime.utcnow()
+        current_second = now.replace(microsecond=0)
+
+        if self.last_wits_second == current_second:
+            return
+
+        self.last_wits_second = current_second
+
         try:
             c1 = random.randint(0, 10)
             c2 = random.randint(0, 80)
             c3 = random.randint(0, 200)
             c4 = random.randint(0, 400)
 
-            now = datetime.utcnow()
             date = now.strftime("%y%m%d")
             time_ = now.strftime("%H%M%S")
 
